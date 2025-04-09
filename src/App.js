@@ -1,24 +1,67 @@
-import logo from './logo.svg';
-import './App.css';
+// App.js
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import Main from "./components/Main";
+import Register from "./components/Register";
+import Login from "./components/Login";
+import NewStoryForm from "./components/NewStoryForm";
+import MyStory from "./components/MyStory";
+import { AuthProvider } from './services/AuthContext';
+import Modal from "./components/Modal";
+import { StoriesProvider, useStories } from './services/StoriesContext';
+
+function AppContent({ activeModal, setActiveModal }) {
+  const { addStory } = useStories();
+
+  const handleClose = () => {
+    setActiveModal(null);
+  };
+
+  return (
+    <div className="app-container">
+      <Header setActiveModal={setActiveModal} />
+      <div className="content">
+      <Routes>
+        <Route path="/" element={<Main />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/mystory/:id" element={<MyStory />} />
+      </Routes>
+      <Modal isOpen={activeModal === "login"} onClose={() => setActiveModal(null)}>
+        <Login onClose={() => setActiveModal(null)} />
+      </Modal>
+      <Modal isOpen={activeModal === "register"} onClose={() => setActiveModal(null)}>
+        <Register onClose={() => setActiveModal(null)} />
+      </Modal>
+      <Modal isOpen={activeModal === "newStory"} onClose={handleClose}>
+        <NewStoryForm
+          onStoryCreated={(createdStory) => {
+            console.log("Nouvelle histoire créée :", createdStory);
+            addStory(createdStory);
+            setActiveModal(null);
+          }}
+          onClose={handleClose}
+        />
+      </Modal>
+      </div>
+      <Footer />
+    </div>
+  );
+}
 
 function App() {
+  const [activeModal, setActiveModal] = useState(null);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AuthProvider>
+      <StoriesProvider>
+        <Router>
+          <AppContent activeModal={activeModal} setActiveModal={setActiveModal} />
+        </Router>
+      </StoriesProvider>
+    </AuthProvider>
   );
 }
 
