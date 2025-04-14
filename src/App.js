@@ -8,9 +8,12 @@ import Register from "./components/Register";
 import Login from "./components/Login";
 import NewStoryForm from "./components/NewStoryForm";
 import MyStory from "./components/MyStory";
+import RecueilPage from "./components/RecueilPage"; // Nouvelle page
 import { AuthProvider } from './services/AuthContext';
 import Modal from "./components/Modal";
 import { StoriesProvider, useStories } from './services/StoriesContext';
+import MyNouvelle from "./components/MyNouvelle";
+
 
 function AppContent({ activeModal, setActiveModal }) {
   const { addStory } = useStories();
@@ -28,6 +31,9 @@ function AppContent({ activeModal, setActiveModal }) {
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/mystory/:id" element={<MyStory />} />
+        <Route path="/recueil/:id" element={<RecueilPage />} />
+        <Route path="/mynouvelle/:id" element={<MyNouvelle />} />  {/* Nouvelle route */}
+
       </Routes>
       <Modal isOpen={activeModal === "login"} onClose={() => setActiveModal(null)}>
         <Login onClose={() => setActiveModal(null)} />

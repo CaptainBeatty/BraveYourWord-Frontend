@@ -1,12 +1,11 @@
-// NewStoryForm.jsx
+// NewNouvelleForm.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/axios';
 
-function NewStoryForm({ onClose, onStoryCreated }) {
+function NewNouvelleForm({ recueilId, onNouvelleCreated, onClose }) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [genre, setGenre] = useState('roman'); // Valeur par défaut "roman"
+  const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const navigate = useNavigate();
@@ -17,35 +16,21 @@ function NewStoryForm({ onClose, onStoryCreated }) {
     setError('');
 
     try {
-      // On envoie le titre, la description et le genre dans le POST
-      const response = await api.post('/stories', { 
-        title, 
-        description,
-        genre
+      const response = await api.post('/nouvelles', { 
+        title,
+        content,
+        recueil: recueilId
       });
-      const createdStory = response.data;
-      
-      if (genre === 'nouvelle') {
-        // Si c'est une nouvelle, redirection vers MyNouvelle
-        navigate(`/mynouvelle/${createdStory._id}`);
-      } else {
-        // Si c'est un roman, on utilise le callback pour ajouter la card dans Main
-        if (onStoryCreated) {
-          onStoryCreated(createdStory);
-        }
+      const nouvelle = response.data;
+      if (onNouvelleCreated) {
+        onNouvelleCreated(nouvelle);
       }
-      
-      // Réinitialiser le formulaire
       setTitle('');
-      setDescription('');
-      setGenre('roman');
-      
-      if (onClose) {
-        onClose();
-      }
+      setContent('');
+      if (onClose) onClose();
     } catch (err) {
       console.error(err);
-      const message = err.response?.data?.error || 'Erreur lors de la création de l’ouvrage.';
+      const message = err.response?.data?.error || 'Erreur lors de la publication.';
       setError(message);
     } finally {
       setIsPublishing(false);
@@ -55,7 +40,7 @@ function NewStoryForm({ onClose, onStoryCreated }) {
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        <h2>Nouvelle Histoire</h2>
+        <h2>Nouvelle</h2>
         {error && <p style={styles.error}>{error}</p>}
         <form onSubmit={handlePublish} style={styles.form}>
           <div style={styles.field}>
@@ -70,28 +55,15 @@ function NewStoryForm({ onClose, onStoryCreated }) {
             />
           </div>
           <div style={styles.field}>
-            <label htmlFor="description">Description (optionnelle)</label>
+            <label htmlFor="content">Contenu</label>
             <textarea
-              id="description"
-              rows="3"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez brièvement l’œuvre (facultatif)"
+              id="content"
+              rows="5"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              required
               style={styles.textarea}
             />
-          </div>
-          <div style={styles.field}>
-            <label htmlFor="genre">Type d’œuvre</label>
-            <select
-              id="genre"
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-              required
-              style={styles.input}
-            >
-              <option value="roman">Roman</option>
-              <option value="nouvelle">Nouvelle</option>
-            </select>
           </div>
           <div style={styles.buttons}>
             <button 
@@ -106,7 +78,7 @@ function NewStoryForm({ onClose, onStoryCreated }) {
               disabled={isPublishing} 
               style={styles.publishButton}
             >
-              {isPublishing ? 'Création...' : 'Créer'}
+              {isPublishing ? 'Publication...' : 'Publier'}
             </button>
           </div>
         </form>
@@ -124,7 +96,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 999,
+    zIndex: 1000,
   },
   modal: {
     backgroundColor: '#fff',
@@ -171,4 +143,4 @@ const styles = {
   },
 };
 
-export default NewStoryForm;
+export default NewNouvelleForm;
