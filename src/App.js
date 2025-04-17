@@ -13,6 +13,8 @@ import { AuthProvider } from './services/AuthContext';
 import Modal from "./components/Modal";
 import { StoriesProvider, useStories } from './services/StoriesContext';
 import MyNouvelle from "./components/MyNouvelle";
+import NewRecueilForm from "./components/NewRecueilForm";
+
 
 
 function AppContent({ activeModal, setActiveModal }) {
@@ -51,6 +53,17 @@ function AppContent({ activeModal, setActiveModal }) {
           onClose={handleClose}
         />
       </Modal>
+      <Modal isOpen={activeModal === "newRecueil"} onClose={() => setActiveModal(null)}>
+        <NewRecueilForm
+        onRecueilCreated={(createdRecueil) => {
+          // Possiblement, vous ajoutez le recueil dans le contexte ou redirigez vers sa page dédiée.
+          setActiveModal(null);
+         }}
+        onClose={() => setActiveModal(null)}
+        />
+      </Modal>
+
+
       </div>
       <Footer />
     </div>

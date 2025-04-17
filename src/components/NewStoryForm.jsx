@@ -1,15 +1,24 @@
 // NewStoryForm.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/axios';
 
 function NewStoryForm({ onClose, onStoryCreated }) {
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [genre, setGenre] = useState('roman'); // Valeur par défaut "roman"
+  const [description, setDescription] = useState(''); // facultatif
+  const [genre, setGenre] = useState('roman'); // roman par défaut
+  const [recueilName, setRecueilName] = useState('');
   const [error, setError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+
   const navigate = useNavigate();
+
+  // Quand genre = "nouvelle", on pré-remplit recueilName avec le titre de la nouvelle
+  useEffect(() => {
+    if (genre === 'nouvelle') {
+      setRecueilName((prev) => prev || title);
+    }
+  }, [title, genre]);
 
   const handlePublish = async (event) => {
     event.preventDefault();
@@ -17,35 +26,56 @@ function NewStoryForm({ onClose, onStoryCreated }) {
     setError('');
 
     try {
-      // On envoie le titre, la description et le genre dans le POST
-      const response = await api.post('/stories', { 
-        title, 
-        description,
-        genre
-      });
-      const createdStory = response.data;
-      
-      if (genre === 'nouvelle') {
-        // Si c'est une nouvelle, redirection vers MyNouvelle
-        navigate(`/mynouvelle/${createdStory._id}`);
-      } else {
-        // Si c'est un roman, on utilise le callback pour ajouter la card dans Main
+      if (genre === 'roman') {
+        // Créer un roman
+        const response = await api.post('/stories', {
+          title,
+          description,
+          genre: 'roman',
+        });
+        const createdStory = response.data;
+
+        // Ajoute la card pour le roman dans Main
         if (onStoryCreated) {
           onStoryCreated(createdStory);
         }
+      } else if (genre === 'nouvelle') {
+        // 1) Créer un recueil (title = recueilName, genre="recueil")
+        const recueilResponse = await api.post('/stories', {
+          title: recueilName,
+          description: '',  // éventuellement, un résumé pour le recueil
+          genre: 'recueil'
+        });
+        const createdRecueil = recueilResponse.data;
+
+        // 2) Créer la nouvelle associée
+        const nouvelleResponse = await api.post('/stories', {
+          title,
+          description,
+          genre: 'nouvelle',
+          recueil: createdRecueil._id
+        });
+        const createdNouvelle = nouvelleResponse.data;
+
+        // Ajoute la card pour la nouvelle dans Main
+        if (onStoryCreated) {
+          onStoryCreated(createdNouvelle);
+        }
       }
-      
-      // Réinitialiser le formulaire
+
+      // Réinitialise le formulaire
       setTitle('');
       setDescription('');
       setGenre('roman');
-      
+      setRecueilName('');
+
+      // Fermer la modale si onClose
       if (onClose) {
         onClose();
       }
     } catch (err) {
       console.error(err);
-      const message = err.response?.data?.error || 'Erreur lors de la création de l’ouvrage.';
+      const message = err.response?.data?.error || 'Erreur lors de la création.';
       setError(message);
     } finally {
       setIsPublishing(false);
@@ -69,17 +99,18 @@ function NewStoryForm({ onClose, onStoryCreated }) {
               style={styles.input}
             />
           </div>
+
           <div style={styles.field}>
-            <label htmlFor="description">Description (optionnelle)</label>
+            <label htmlFor="description">Description (facultatif)</label>
             <textarea
               id="description"
               rows="3"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez brièvement l’œuvre (facultatif)"
               style={styles.textarea}
             />
           </div>
+
           <div style={styles.field}>
             <label htmlFor="genre">Type d’œuvre</label>
             <select
@@ -93,6 +124,24 @@ function NewStoryForm({ onClose, onStoryCreated }) {
               <option value="nouvelle">Nouvelle</option>
             </select>
           </div>
+
+          {/* Champ recueilName, visible uniquement si genre="nouvelle" */}
+          {genre === 'nouvelle' && (
+            <div style={styles.field}>
+              <label htmlFor="recueilName">
+                Nom du recueil (par défaut = titre de la nouvelle)
+              </label>
+              <input
+                id="recueilName"
+                type="text"
+                value={recueilName}
+                onChange={(e) => setRecueilName(e.target.value)}
+                required
+                style={styles.input}
+              />
+            </div>
+          )}
+
           <div style={styles.buttons}>
             <button 
               type="button" 
@@ -121,9 +170,7 @@ const styles = {
     top: 0, left: 0,
     width: '100%', height: '100%',
     backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+    display: 'flex', justifyContent: 'center', alignItems: 'center',
     zIndex: 999,
   },
   modal: {

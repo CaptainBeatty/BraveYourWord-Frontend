@@ -1,6 +1,5 @@
 // NewNouvelleForm.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/axios';
 
 function NewNouvelleForm({ recueilId, onNouvelleCreated, onClose }) {
@@ -8,7 +7,7 @@ function NewNouvelleForm({ recueilId, onNouvelleCreated, onClose }) {
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
-  const navigate = useNavigate();
+  
 
   const handlePublish = async (event) => {
     event.preventDefault();
