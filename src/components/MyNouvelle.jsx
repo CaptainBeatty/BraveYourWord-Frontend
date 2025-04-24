@@ -6,6 +6,7 @@ import { useAuth } from '../services/AuthContext';
 import { useStories } from '../services/StoriesContext';
 import Modal from './Modal';
 import NewRecueilForm from './NewRecueilForm';
+import CommentModal from './CommentModal';
 
 import { vote } from '../services/likeService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -23,7 +24,8 @@ function MyNouvelle() {
   const { user } = useAuth();
   const { updateStory, deleteStory } = useStories();
   const navigate = useNavigate();
-
+  const [showComments, setShowComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
   const [story, setStory] = useState(null);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
@@ -69,6 +71,11 @@ function MyNouvelle() {
     }
     fetchNouvelle();
   }, [id, user]);
+
+  useEffect(() => {
+    axios.get(`/comments/${id}`).then(res => setCommentCount(res.data.length));
+  }, [id, showComments]);
+
 
   const handleSaveInfo = async () => {
     try {
@@ -207,6 +214,14 @@ function MyNouvelle() {
         </button>
       </div>
 
+      <button
+  onClick={() => setShowComments(true)}
+  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+>
+  <FontAwesomeIcon icon="fa-solid fa-comment" /> {commentCount}
+</button>
+
+
       {isAuthor && (
         <div style={styles.buttonContainer}>
           <button onClick={() => setIsEditingInfo(true)} style={styles.button}>
@@ -343,6 +358,14 @@ function MyNouvelle() {
         </div>
       )}
 
+        <CommentModal
+          isOpen={showComments}
+          onClose={() => setShowComments(false)}
+          photoId={story._id}
+          user={user}
+        />
+
+
       {showNewRecueilModal && (
         <Modal isOpen onClose={() => setShowNewRecueilModal(false)}>
           <NewRecueilForm
@@ -351,6 +374,7 @@ function MyNouvelle() {
           />
         </Modal>
       )}
+      
     </div>
   );
 }

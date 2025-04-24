@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../services/axios';
 import { useAuth } from '../services/AuthContext';
 import { useStories } from '../services/StoriesContext';
+import CommentModal from './CommentModal';
 
 import { vote } from '../services/likeService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -13,7 +14,8 @@ import {
 } from '@fortawesome/free-regular-svg-icons';
 import {
   faThumbsUp as faUpSolid,
-  faThumbsDown as faDownSolid
+  faThumbsDown as faDownSolid,
+  faComment as faCommentSolid
 } from '@fortawesome/free-solid-svg-icons';
 
 function MyStory() {
@@ -35,6 +37,9 @@ function MyStory() {
   const [dislikes, setDislikes] = useState(0);
   const [liked, setLiked]       = useState(false);
   const [disliked, setDisliked] = useState(false);
+
+  const [showComments, setShowComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
 
   useEffect(() => {
     async function fetchStory() {
@@ -61,6 +66,10 @@ function MyStory() {
     }
     fetchStory();
   }, [id, user]);
+
+  useEffect(() => {
+    axios.get(`/comments/${id}`).then(res => setCommentCount(res.data.length));
+  }, [id, showComments]);
 
   const handleSaveInfo = async () => {
     try {
@@ -163,7 +172,16 @@ function MyStory() {
           <FontAwesomeIcon icon={disliked ? faDownSolid : faDownReg} />{' '}
           <span>{dislikes}</span>
         </button>
+        <button onClick={() => setShowComments(true)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={faCommentSolid} /> {commentCount}
+        </button>
       </div>
+      <CommentModal
+        isOpen={showComments}
+        onClose={() => setShowComments(false)}
+        photoId={story._id}
+        user={user}
+      />
 
       {isAuthor && (
         <div style={styles.buttonContainer}>
