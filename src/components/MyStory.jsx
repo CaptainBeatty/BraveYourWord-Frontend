@@ -1,86 +1,95 @@
-// MyStory.jsx
+// src/components/MyStory.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../services/axios';
 import { useAuth } from '../services/AuthContext';
 import { useStories } from '../services/StoriesContext';
 
+import { vote } from '../services/likeService';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faThumbsUp as faUpReg,
+  faThumbsDown as faDownReg
+} from '@fortawesome/free-regular-svg-icons';
+import {
+  faThumbsUp as faUpSolid,
+  faThumbsDown as faDownSolid
+} from '@fortawesome/free-solid-svg-icons';
+
 function MyStory() {
   const { id } = useParams();
   const { user } = useAuth();
   const { updateStory, deleteStory } = useStories();
   const navigate = useNavigate();
-  
-  const [story, setStory] = useState(null);
 
-  // Modes d'édition :
-  // isEditingInfo pour modifier titre, publicationDate et description
-  // isEditingContent pour modifier le contenu complet (le texte entier)
+  const [story, setStory] = useState(null);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
-
-  // États pour le formulaire d'édition des infos
   const [newTitle, setNewTitle] = useState('');
   const [newPubDate, setNewPubDate] = useState('');
   const [newDescription, setNewDescription] = useState('');
-
-  // État pour le contenu (mode Ecriture)
   const [content, setContent] = useState('');
 
+  // États like/dislike
+  const [likes, setLikes]       = useState(0);
+  const [dislikes, setDislikes] = useState(0);
+  const [liked, setLiked]       = useState(false);
+  const [disliked, setDisliked] = useState(false);
+
   useEffect(() => {
-    const fetchStory = async () => {
+    async function fetchStory() {
       try {
-        const response = await axios.get(`/stories/${id}`);
-        setStory(response.data);
-        setContent(response.data.content);
-        // Initialiser les champs avec les valeurs existantes
-        setNewTitle(response.data.title);
-        setNewDescription(response.data.description || '');
+        const res = await axios.get(`/stories/${id}`);
+        const data = res.data;
+        setStory(data);
+        setContent(data.content);
+        setNewTitle(data.title);
+        setNewDescription(data.description || '');
         setNewPubDate(
-          response.data.publicationDate
-            ? new Date(response.data.publicationDate).toISOString().split('T')[0]
+          data.publicationDate
+            ? new Date(data.publicationDate).toISOString().split('T')[0]
             : ''
         );
-      } catch (error) {
-        console.error("Erreur lors de la récupération de l'histoire", error);
+        // initialise like/dislike
+        setLikes(data.likes || 0);
+        setDislikes(data.dislikes || 0);
+        setLiked(data.likedBy?.includes(user?.id));
+        setDisliked(data.dislikedBy?.includes(user?.id));
+      } catch (err) {
+        console.error('Erreur lors de la récupération de l\'histoire', err);
       }
-    };
-
+    }
     fetchStory();
-  }, [id]);
+  }, [id, user]);
 
-  // Fonction pour sauvegarder les informations générales (titre, date, description)
   const handleSaveInfo = async () => {
     try {
-      await axios.put(`/stories/${id}`, { 
-        title: newTitle, 
+      await axios.put(`/stories/${id}`, {
+        title: newTitle,
         publicationDate: newPubDate,
         description: newDescription
       });
-      const response = await axios.get(`/stories/${id}`);
-      const updatedStory = response.data;
-      setStory(updatedStory);
-      updateStory(updatedStory);
+      const res = await axios.get(`/stories/${id}`);
+      setStory(res.data);
+      updateStory(res.data);
       setIsEditingInfo(false);
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde des informations", error);
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde des informations', err);
     }
   };
 
-  // Fonction pour sauvegarder le contenu complet (Ecriture)
   const handleSaveContent = async () => {
     try {
-      await axios.put(`/stories/${id}`, { 
-        title: story.title, // le titre reste inchangé ici
-        content: content 
+      await axios.put(`/stories/${id}`, {
+        title: story.title,
+        content
       });
-      const response = await axios.get(`/stories/${id}`);
-      const updatedStory = response.data;
-      setStory(updatedStory);
-      updateStory(updatedStory);
+      const res = await axios.get(`/stories/${id}`);
+      setStory(res.data);
+      updateStory(res.data);
       setIsEditingContent(false);
-    } catch (error) {
-      console.error("Erreur lors de la sauvegarde du contenu", error);
+    } catch (err) {
+      console.error('Erreur lors de la sauvegarde du contenu', err);
     }
   };
 
@@ -89,32 +98,80 @@ function MyStory() {
       await axios.delete(`/stories/${id}`);
       deleteStory(id);
       navigate('/');
-    } catch (error) {
-      console.error("Erreur lors de la suppression de l'histoire", error);
+    } catch (err) {
+      console.error('Erreur lors de la suppression de l\'histoire', err);
+    }
+  };
+
+  // Handlers Like / Dislike
+  const handleLike = async () => {
+    if (!user) {
+      alert('Connectez-vous pour liker');
+      return;
+    }
+    try {
+      const res = await vote('stories', id, 'like');
+      setLikes(res.likes);
+      setDislikes(res.dislikes);
+      setLiked(v => !v);
+      setDisliked(false);
+    } catch (err) {
+      console.error('Erreur like', err);
+    }
+  };
+
+  const handleDislike = async () => {
+    if (!user) {
+      alert('Connectez-vous pour disliker');
+      return;
+    }
+    try {
+      const res = await vote('stories', id, 'dislike');
+      setLikes(res.likes);
+      setDislikes(res.dislikes);
+      setDisliked(v => !v);
+      setLiked(false);
+    } catch (err) {
+      console.error('Erreur dislike', err);
     }
   };
 
   if (!story) return <p>Chargement...</p>;
 
-  const isAuthor = user && (user.username === story.author.username);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Date inconnue';
-    return new Date(dateString).toLocaleDateString();
-  };
+  const isAuthor = user?.username === story.author?.username;
+  const formatDate = d => (d ? new Date(d).toLocaleDateString() : 'Date inconnue');
 
   return (
     <div style={styles.container}>
       <h2>{story.title}</h2>
       <p>Par {story.author.username}</p>
       <p>Publiée le {formatDate(story.publicationDate)}</p>
+
+      {/* === Like / Dislike === */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <button
+          onClick={handleLike}
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={liked ? faUpSolid : faUpReg} />{' '}
+          <span>{likes}</span>
+        </button>
+        <button
+          onClick={handleDislike}
+          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+        >
+          <FontAwesomeIcon icon={disliked ? faDownSolid : faDownReg} />{' '}
+          <span>{dislikes}</span>
+        </button>
+      </div>
+
       {isAuthor && (
         <div style={styles.buttonContainer}>
           <button onClick={() => setIsEditingInfo(true)} style={styles.button}>
             Modifier infos
           </button>
           <button onClick={() => setIsEditingContent(true)} style={styles.button}>
-            Ecriture
+            Écriture
           </button>
           <button onClick={handleDelete} style={styles.button}>
             Supprimer
@@ -122,60 +179,71 @@ function MyStory() {
         </div>
       )}
 
-      {/* Formulaire pour modifier le titre, la date et la description */}
       {isEditingInfo && (
         <div style={styles.editForm}>
           <h3>Modifier les informations</h3>
           <div style={styles.formField}>
             <label>Titre</label>
-            <input 
-              type="text" 
-              value={newTitle} 
-              onChange={(e) => setNewTitle(e.target.value)}
+            <input
+              type="text"
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
               style={styles.input}
             />
           </div>
           <div style={styles.formField}>
             <label>Date de publication</label>
-            <input 
-              type="date" 
-              value={newPubDate} 
-              onChange={(e) => setNewPubDate(e.target.value)}
+            <input
+              type="date"
+              value={newPubDate}
+              onChange={e => setNewPubDate(e.target.value)}
               style={styles.input}
             />
           </div>
           <div style={styles.formField}>
             <label>Description</label>
-            <textarea 
-              value={newDescription} 
-              onChange={(e) => setNewDescription(e.target.value)}
+            <textarea
+              value={newDescription}
+              onChange={e => setNewDescription(e.target.value)}
               style={styles.textarea}
             />
           </div>
           <div style={styles.formButtons}>
-            <button onClick={handleSaveInfo} style={styles.button}>Sauvegarder</button>
-            <button onClick={() => setIsEditingInfo(false)} style={styles.button}>Annuler</button>
+            <button onClick={handleSaveInfo} style={styles.button}>
+              Sauvegarder
+            </button>
+            <button
+              onClick={() => setIsEditingInfo(false)}
+              style={styles.button}
+            >
+              Annuler
+            </button>
           </div>
         </div>
       )}
 
-      {/* Formulaire pour modifier le contenu complet */}
       {isEditingContent && (
         <div style={styles.editForm}>
-          <h3>Mode Ecriture</h3>
-          <textarea 
-            value={content} 
-            onChange={(e) => setContent(e.target.value)}
+          <h3>Mode Écriture</h3>
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
             style={styles.textarea}
           />
           <div style={styles.formButtons}>
-            <button onClick={handleSaveContent} style={styles.button}>Sauvegarder</button>
-            <button onClick={() => setIsEditingContent(false)} style={styles.button}>Annuler</button>
+            <button onClick={handleSaveContent} style={styles.button}>
+              Sauvegarder
+            </button>
+            <button
+              onClick={() => setIsEditingContent(false)}
+              style={styles.button}
+            >
+              Annuler
+            </button>
           </div>
         </div>
       )}
 
-      {/* Affichage du contenu quand non en mode Ecriture */}
       {!isEditingContent && (
         <div>
           <p>{story.content || "Aucun contenu pour l'instant."}</p>

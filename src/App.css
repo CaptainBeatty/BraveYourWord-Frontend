@@ -1,56 +1,27 @@
-.App {
-  text-align: center;
-}
-
-html, body {
+/* 1. Reset et hauteur 100% sur html/body/#root */
+html, body, #root {
   margin: 0;
   padding: 0;
   height: 100%;
+}
+
+/* 2. Flex sur #root pour répartir Header / content / Footer */
+#root {
   display: flex;
   flex-direction: column;
 }
 
-.app-container{
+/* 3. Votre app-container doit remplir #root */
+.app-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh; /* Assure que l'application occupe toute la hauteur */
+  flex: 1;            /* prend toute la hauteur disponible */
 }
 
+/* 4. Le .content pousse le footer vers le bas */
 .content {
-  flex: 1;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  flex: 1;            /* gonfle pour occuper tout l’espace restant */
+  /* si vous utilisez footer en fixed, pensez à un padding-bottom
+     pour ne pas cacher le contenu sous le footer : */
+  padding-bottom: 80px; /* ajustez selon la hauteur de votre footer */
 }
