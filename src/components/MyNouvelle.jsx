@@ -6,17 +6,18 @@ import { useAuth } from '../services/AuthContext';
 import { useStories } from '../services/StoriesContext';
 import Modal from './Modal';
 import NewRecueilForm from './NewRecueilForm';
-import CommentModal from './CommentModal';
 
 import { vote } from '../services/likeService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faThumbsUp as faUpReg,
-  faThumbsDown as faDownReg
+  faThumbsDown as faDownReg,
+  faComment as faCommentReg
 } from '@fortawesome/free-regular-svg-icons';
 import {
   faThumbsUp as faUpSolid,
-  faThumbsDown as faDownSolid
+  faThumbsDown as faDownSolid,
+  faComment as faCommentSolid
 } from '@fortawesome/free-solid-svg-icons';
 
 function MyNouvelle() {
@@ -24,398 +25,242 @@ function MyNouvelle() {
   const { user } = useAuth();
   const { updateStory, deleteStory } = useStories();
   const navigate = useNavigate();
-  const [showComments, setShowComments] = useState(false);
-  const [commentCount, setCommentCount] = useState(0);
+
+  // Story state
   const [story, setStory] = useState(null);
+  const [content, setContent] = useState('');
+
+  // Edit state
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newPubDate, setNewPubDate] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [content, setContent] = useState('');
+
+  // Recueil state
   const [showRecueilSelect, setShowRecueilSelect] = useState(false);
   const [recueils, setRecueils] = useState([]);
   const [selectedRecueil, setSelectedRecueil] = useState('');
   const [showNewRecueilModal, setShowNewRecueilModal] = useState(false);
 
-  // États like/dislike
-  const [likes, setLikes]       = useState(0);
+  // Like/Dislike state
+  const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
-  const [liked, setLiked]       = useState(false);
+  const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
 
+  // Comments inline state
+  const [comments, setComments] = useState([]);
+  const [commentCount, setCommentCount] = useState(0);
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+
+  // Fetch story and comments
   useEffect(() => {
-    async function fetchNouvelle() {
+    async function fetchData() {
       try {
-        const response = await axios.get(`/stories/${id}`);
-        const data = response.data;
+        const { data } = await axios.get(`/stories/${id}`);
         setStory(data);
-        // initialisation orig.
         setContent(data.content || '');
         setNewTitle(data.title || '');
         setNewDescription(data.description || '');
-        setNewPubDate(
-          data.publicationDate
-            ? new Date(data.publicationDate).toISOString().split('T')[0]
-            : ''
-        );
+        setNewPubDate(data.publicationDate ? new Date(data.publicationDate).toISOString().split('T')[0] : '');
         if (data.recueil) setSelectedRecueil(data.recueil);
-        // initialisation like/dislike
         setLikes(data.likes || 0);
         setDislikes(data.dislikes || 0);
         setLiked(data.likedBy?.includes(user?.id));
         setDisliked(data.dislikedBy?.includes(user?.id));
+
+        const commentsRes = await axios.get(`/comments/${id}`); // id here is treated as storyId in backend
+        setComments(commentsRes.data);
+        setCommentCount(commentsRes.data.length);
       } catch (err) {
-        console.error('Erreur lors de la récupération de la nouvelle', err);
+        console.error('Erreur récupération nouvelle ou commentaires', err);
       }
     }
-    fetchNouvelle();
+    fetchData();
   }, [id, user]);
 
-  useEffect(() => {
-    axios.get(`/comments/${id}`).then(res => setCommentCount(res.data.length));
-  }, [id, showComments]);
-
-
-  const handleSaveInfo = async () => {
-    try {
-      await axios.put(`/stories/${id}`, {
-        title: newTitle,
-        publicationDate: newPubDate,
-        description: newDescription
-      });
-      const res = await axios.get(`/stories/${id}`);
-      setStory(res.data);
-      updateStory(res.data);
-      setIsEditingInfo(false);
-    } catch (err) {
-      console.error('Erreur lors de la sauvegarde des informations', err);
-    }
-  };
-
-  const handleSaveContent = async () => {
-    try {
-      await axios.put(`/stories/${id}`, {
-        title: story.title,
-        content
-      });
-      const res = await axios.get(`/stories/${id}`);
-      setStory(res.data);
-      updateStory(res.data);
-      setIsEditingContent(false);
-    } catch (err) {
-      console.error('Erreur lors de la sauvegarde du contenu', err);
-    }
-  };
-
-  const handleDelete = async () => {
-    try {
-      await axios.delete(`/stories/${id}`);
-      deleteStory(id);
-      navigate('/');
-    } catch (err) {
-      console.error('Erreur lors de la suppression de la nouvelle', err);
-    }
-  };
-
-  const fetchRecueils = async () => {
-    try {
-      const res = await axios.get('/stories');
-      setRecueils(res.data.filter(s => s.genre === 'recueil'));
-    } catch (err) {
-      console.error('Erreur lors de la récupération des recueils', err);
-    }
-  };
-
-  const handleAssociateRecueil = async () => {
-    try {
-      await axios.put(`/stories/${id}`, { recueil: selectedRecueil });
-      const res = await axios.get(`/stories/${id}`);
-      setStory(res.data);
-      updateStory(res.data);
-      setShowRecueilSelect(false);
-    } catch (err) {
-      console.error('Erreur lors de l\'association au recueil', err);
-    }
-  };
-
-  const handleRecueilCreated = async created => {
-    try {
-      await axios.put(`/stories/${id}`, { recueil: created._id });
-      const res = await axios.get(`/stories/${id}`);
-      setStory(res.data);
-      updateStory(res.data);
-      setShowNewRecueilModal(false);
-    } catch (err) {
-      console.error('Erreur lors de l\'association au nouveau recueil', err);
-    }
-  };
-
-  // Handlers Like / Dislike
+  // Handlers
   const handleLike = async () => {
-    if (!user) {
-      alert('Connectez-vous pour liker');
-      return;
-    }
-    try {
-      const res = await vote('stories', id, 'like');
-      setLikes(res.likes);
-      setDislikes(res.dislikes);
-      setLiked(v => !v);
-      setDisliked(false);
-    } catch (err) {
-      console.error('Erreur lors du like', err);
-    }
+    if (!user) return alert('Connectez-vous pour liker');
+    const res = await vote('stories', id, 'like');
+    setLikes(res.likes);
+    setDislikes(res.dislikes);
+    setLiked(v => !v);
+    setDisliked(false);
   };
 
   const handleDislike = async () => {
-    if (!user) {
-      alert('Connectez-vous pour disliker');
-      return;
-    }
-    try {
-      const res = await vote('stories', id, 'dislike');
-      setLikes(res.likes);
-      setDislikes(res.dislikes);
-      setDisliked(v => !v);
-      setLiked(false);
-    } catch (err) {
-      console.error('Erreur lors du dislike', err);
-    }
+    if (!user) return alert('Connectez-vous pour disliker');
+    const res = await vote('stories', id, 'dislike');
+    setLikes(res.likes);
+    setDislikes(res.dislikes);
+    setDisliked(v => !v);
+    setLiked(false);
+  };
+
+  const handleSaveInfo = async () => {
+    await axios.put(`/stories/${id}`, { title: newTitle, publicationDate: newPubDate, description: newDescription });
+    const { data } = await axios.get(`/stories/${id}`);
+    setStory(data);
+    updateStory(data);
+    setIsEditingInfo(false);
+  };
+
+  const handleSaveContent = async () => {
+    await axios.put(`/stories/${id}`, { title: story.title, content });
+    const { data } = await axios.get(`/stories/${id}`);
+    setStory(data);
+    updateStory(data);
+    setIsEditingContent(false);
+  };
+
+  const handleDelete = async () => {
+    await axios.delete(`/stories/${id}`);
+    deleteStory(id);
+    navigate('/');
+  };
+
+  const fetchRecueils = async () => {
+    const { data } = await axios.get('/stories');
+    setRecueils(data.filter(s => s.genre === 'recueil'));
+  };
+
+  const handleAssociateRecueil = async () => {
+    await axios.put(`/stories/${id}`, { recueil: selectedRecueil });
+    const { data } = await axios.get(`/stories/${id}`);
+    setStory(data);
+    updateStory(data);
+    setShowRecueilSelect(false);
+  };
+
+  const handleNewRecueil = async created => {
+    await axios.put(`/stories/${id}`, { recueil: created._id });
+    const { data } = await axios.get(`/stories/${id}`);
+    setStory(data);
+    updateStory(data);
+    setShowNewRecueilModal(false);
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!user || !newComment.trim()) return;
+    const { data: newC } = await axios.post('/comments', { storyId: id, content: newComment });
+    const updated = [...comments, newC];
+    setComments(updated);
+    setCommentCount(updated.length);
+    setNewComment('');
   };
 
   if (!story) return <p>Chargement...</p>;
 
-  const isAuthor = user?.username === story.author?.username;
   const formatDate = d => (d ? new Date(d).toLocaleDateString() : 'Date inconnue');
+  const isAuthor = user?.username === story.author?.username;
 
   return (
-    <div style={styles.container}>
+    <div style={{ padding: '1rem', maxWidth: '800px', margin: '2rem auto' }}>
       <h2>{story.title}</h2>
       <p>Par {story.author?.username || 'Inconnu'}</p>
       <p>Publiée le {formatDate(story.publicationDate)}</p>
-      {story.recueil && <p>Associé au recueil : {story.recueil.title}</p>}
+      {story.recueil && <p>Recueil : {story.recueil.title}</p>}
 
-      {/* === Like / Dislike === */}
+      {/* Like / Dislike / Comments */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-        <button
-          onClick={handleLike}
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          <FontAwesomeIcon icon={liked ? faUpSolid : faUpReg} />{' '}
-          <span>{likes}</span>
+        <button onClick={handleLike} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={liked ? faUpSolid : faUpReg} /> {likes}
         </button>
-        <button
-          onClick={handleDislike}
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          <FontAwesomeIcon icon={disliked ? faDownSolid : faDownReg} />{' '}
-          <span>{dislikes}</span>
+        <button onClick={handleDislike} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={disliked ? faDownSolid : faDownReg} /> {dislikes}
+        </button>
+        <button onClick={() => setShowComments(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={showComments ? faCommentSolid : faCommentReg} /> {commentCount}
         </button>
       </div>
 
-      <button
-  onClick={() => setShowComments(true)}
-  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
->
-  <FontAwesomeIcon icon="fa-solid fa-comment" /> {commentCount}
-</button>
-
-
+      {/* Author controls */}
       {isAuthor && (
-        <div style={styles.buttonContainer}>
-          <button onClick={() => setIsEditingInfo(true)} style={styles.button}>
-            Modifier infos
-          </button>
-          <button onClick={() => setIsEditingContent(true)} style={styles.button}>
-            Écriture
-          </button>
-          <button onClick={handleDelete} style={styles.button}>
-            Supprimer
-          </button>
-          {!story.recueil && (
-            <>
-              <button
-                onClick={() => {
-                  setShowRecueilSelect(true);
-                  fetchRecueils();
-                }}
-                style={styles.button}
-              >
-                Associer un recueil existant
-              </button>
-              <button
-                onClick={() => setShowNewRecueilModal(true)}
-                style={styles.button}
-              >
-                Créer un nouveau recueil
-              </button>
-            </>
-          )}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+          <button onClick={() => setIsEditingInfo(true)}>Modifier infos</button>
+          <button onClick={() => setIsEditingContent(true)}>Écriture</button>
+          <button onClick={handleDelete}>Supprimer</button>
+          {!story.recueil && <>
+            <button onClick={() => { setShowRecueilSelect(true); fetchRecueils(); }}>Associer recueil</button>
+            <button onClick={() => setShowNewRecueilModal(true)}>Nouveau recueil</button>
+          </>}
         </div>
       )}
 
+      {/* Edit Info Form */}
       {isEditingInfo && (
-        <div style={styles.editForm}>
-          <h3>Modifier les informations</h3>
-          <div style={styles.formField}>
+        <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
+          <h3>Modifier Informations</h3>
+          <div style={{ marginBottom: '0.5rem' }}>
             <label>Titre</label>
-            <input
-              type="text"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              style={styles.input}
-            />
+            <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} style={{ width: '100%' }} />
           </div>
-          <div style={styles.formField}>
+          <div style={{ marginBottom: '0.5rem' }}>
             <label>Date de publication</label>
-            <input
-              type="date"
-              value={newPubDate}
-              onChange={e => setNewPubDate(e.target.value)}
-              style={styles.input}
-            />
+            <input type="date" value={newPubDate} onChange={e => setNewPubDate(e.target.value)} style={{ width: '100%' }} />
           </div>
-          <div style={styles.formField}>
+          <div style={{ marginBottom: '0.5rem' }}>
             <label>Description</label>
-            <textarea
-              value={newDescription}
-              onChange={e => setNewDescription(e.target.value)}
-              style={styles.textarea}
-            />
+            <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} style={{ width: '100%' }} />
           </div>
-          <div style={styles.formButtons}>
-            <button onClick={handleSaveInfo} style={styles.button}>
-              Sauvegarder
-            </button>
-            <button
-              onClick={() => setIsEditingInfo(false)}
-              style={styles.button}
-            >
-              Annuler
-            </button>
-          </div>
+          <button onClick={handleSaveInfo} style={{ marginRight: '0.5rem' }}>Sauvegarder</button>
+          <button onClick={() => setIsEditingInfo(false)}>Annuler</button>
         </div>
       )}
 
+      {/* Edit Content Form */}
       {isEditingContent && (
-        <div style={styles.editForm}>
+        <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
           <h3>Mode Écriture</h3>
-          <textarea
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            style={styles.textarea}
-          />
-          <div style={styles.formButtons}>
-            <button onClick={handleSaveContent} style={styles.button}>
-              Sauvegarder
-            </button>
-            <button
-              onClick={() => setIsEditingContent(false)}
-              style={styles.button}
-            >
-              Annuler
-            </button>
-          </div>
+          <textarea value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', height: '200px' }} />
+          <button onClick={handleSaveContent} style={{ marginRight: '0.5rem' }}>Sauvegarder</button>
+          <button onClick={() => setIsEditingContent(false)}>Annuler</button>
         </div>
       )}
 
-      {!isEditingContent && (
-        <div>
-          <p>{story.content || "Aucun contenu pour l'instant."}</p>
-        </div>
-      )}
+      {/* Story Content Display */}
+      {!isEditingContent && <div><p>{content || "Aucun contenu."}</p></div>}
 
+      {/* Recueil Select */}
       {showRecueilSelect && (
-        <div style={styles.editForm}>
-          <h3>Associer à un recueil existant</h3>
-          <select
-            value={selectedRecueil}
-            onChange={e => setSelectedRecueil(e.target.value)}
-            style={styles.input}
-          >
-            <option value="">Sélectionnez un recueil</option>
-            {recueils.map(r => (
-              <option key={r._id} value={r._id}>
-                {r.title}
-              </option>
-            ))}
+        <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
+          <h3>Associer un recueil existant</h3>
+          <select value={selectedRecueil} onChange={e => setSelectedRecueil(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }}> 
+            <option value="">-- Sélectionnez --</option>
+            {recueils.map(r => <option key={r._id} value={r._id}>{r.title}</option>)}
           </select>
-          <div style={styles.formButtons}>
-            <button
-              onClick={handleAssociateRecueil}
-              style={styles.button}
-            >
-              Associer
-            </button>
-            <button
-              onClick={() => setShowRecueilSelect(false)}
-              style={styles.button}
-            >
-              Annuler
-            </button>
-          </div>
+          <button onClick={handleAssociateRecueil} style={{ marginRight: '0.5rem' }}>Associer</button>
+          <button onClick={() => setShowRecueilSelect(false)}>Annuler</button>
         </div>
       )}
 
-        <CommentModal
-          isOpen={showComments}
-          onClose={() => setShowComments(false)}
-          photoId={story._id}
-          user={user}
-        />
-
-
+      {/* New Recueil Modal */}
       {showNewRecueilModal && (
         <Modal isOpen onClose={() => setShowNewRecueilModal(false)}>
-          <NewRecueilForm
-            onRecueilCreated={handleRecueilCreated}
-            onClose={() => setShowNewRecueilModal(false)}
-          />
+          <NewRecueilForm onRecueilCreated={handleNewRecueil} onClose={() => setShowNewRecueilModal(false)} />
         </Modal>
       )}
-      
+
+      {/* Inline Comments Section */}
+      {showComments && (
+        <div style={{ marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
+          <h3>Commentaires ({commentCount})</h3>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+            {comments.map(c => (
+              <div key={c._id} style={{ marginBottom: '0.5rem' }}>
+                <strong>{c.userId.username}</strong> : {c.content}
+              </div>
+            ))}
+          </div>
+          <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Écrire un commentaire" style={{ width: '100%', marginBottom: '0.5rem' }} />
+          <button onClick={handleCommentSubmit}>Envoyer</button>
+        </div>
+      )}
     </div>
   );
 }
-
-const styles = {
-  container: {
-    padding: '1rem',
-    maxWidth: '800px',
-    margin: '2rem auto'
-  },
-  buttonContainer: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1rem'
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    fontSize: '1rem',
-    cursor: 'pointer'
-  },
-  editForm: {
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    padding: '1rem',
-    marginBottom: '1rem'
-  },
-  formField: {
-    marginBottom: '1rem'
-  },
-  input: {
-    width: '100%',
-    padding: '0.5rem'
-  },
-  textarea: {
-    width: '100%',
-    padding: '0.5rem'
-  },
-  formButtons: {
-    display: 'flex',
-    gap: '1rem'
-  }
-};
 
 export default MyNouvelle;

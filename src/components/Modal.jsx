@@ -46,10 +46,13 @@ const styles = {
     padding: '20px 30px',
     borderRadius: '10px',
     position: 'relative',
-    maxWidth: '400px',
+    maxWidth: '600px',         // plus large
+    maxHeight: '80vh',         // limite en hauteur
+    overflowY: 'auto',         // scroll si contenu dépasse
     width: '90%',
     boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
   },
+  
   closeButton: {
     position: 'absolute',
     top: '10px',
