@@ -3,13 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from '../services/axios';
 import { useAuth } from '../services/AuthContext';
 
-
 const Login = ({ onClose }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '' });
 
-  
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -18,11 +16,8 @@ const Login = ({ onClose }) => {
     e.preventDefault();
     try {
       const res = await axios.post('/auth/login', formData);
-      // On récupère le token et on appelle login() du contexte
       const { token, username } = res.data;
-login(token, { username });
-
-      console.log(res.data)
+      login(token, { username });
       if (onClose) onClose();
       navigate('/');
     } catch (err) {
@@ -31,135 +26,52 @@ login(token, { username });
     }
   };
 
-
-  // Gérer le clic sur l'overlay pour fermer la modal
-  const handleOverlayClick = () => {
-    if (onClose) onClose();
-  };
-
   return (
-    <div style={modalStyles.overlay} onClick={handleOverlayClick}>
-      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} style={modalStyles.closeButton}>
-          &times;
-        </button>
-        <form onSubmit={handleSubmit}>
-          <h2 style={modalStyles.title}>Login</h2>
-          <div style={modalStyles.field}>
-            <label htmlFor="email" style={styles.label}>Email :</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="Your email"
-              value={formData.email}
-              onChange={handleChange}
-              style={styles.input}
-              required
-            />
-          </div>
-          <div style={modalStyles.field}>
-            <label htmlFor="password" style={styles.label}>Password :</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="Your password"
-              value={formData.password}
-              onChange={handleChange}
-              style={styles.input}
-              required
-            />
-          </div>
-          <button type="submit" style={modalStyles.submitButton}>
-            Login
-          </button>
-          <div style={modalStyles.forgotPassword}>
-            <Link
-              to="/forgot-password"
-              style={{ color: '#007bff', textDecoration: 'none' }}
-              onClick={onClose}
-            >
-              Forgotten password ?
-            </Link>
-          </div>
-        </form>
+    <form onSubmit={handleSubmit} style={{ maxWidth: '400px', margin: '0 auto', padding: '1rem' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>Login</h2>
+      <div style={{ marginBottom: '0.75rem' }}>
+        <label htmlFor="email" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', color: '#555' }}>
+          Email :
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="Your email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+        />
       </div>
-    </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <label htmlFor="password" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', color: '#555' }}>
+          Password :
+        </label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Your password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+        />
+      </div>
+      <button
+        type="submit"
+        style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', background: '#007bff', color: '#fff', border: 'none', cursor: 'pointer' }}
+      >
+        Se connecter
+      </button>
+      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+        <Link to="/forgot-password" onClick={onClose} style={{ color: '#007bff', textDecoration: 'none' }}>
+          Forgotten password ?
+        </Link>
+      </div>
+    </form>
   );
-};
-
-const modalStyles = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  modal: {
-    backgroundColor: '#fff',
-    padding: '20px 30px',
-    borderRadius: '10px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    position: 'relative',
-    maxWidth: '400px',
-    width: '90%',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: '10px',
-    right: '15px',
-    background: 'none',
-    border: 'none',
-    fontSize: '24px',
-    cursor: 'pointer',
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: '15px',
-    fontSize: '20px',
-    color: '#333',
-  },
-  field: {
-    marginBottom: '10px',
-  },
-  submitButton: {
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    padding: '10px 15px',
-    borderRadius: '5px',
-    width: '100%',
-    fontSize: '16px',
-    cursor: 'pointer',
-  },
-  forgotPassword: {
-    textAlign: 'center',
-    marginTop: '15px',
-  },
-};
-
-const styles = {
-  label: {
-    display: 'block',
-    fontWeight: 'bold',
-    marginBottom: '3px',
-    color: '#555',
-  },
-  input: {
-    width: '100%',
-    padding: '8px',
-    fontSize: '14px',
-    border: '1px solid #ccc',
-    borderRadius: '5px',
-    boxSizing: 'border-box',
-  },
 };
 
 export default Login;

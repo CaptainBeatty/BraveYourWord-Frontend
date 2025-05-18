@@ -1,11 +1,13 @@
 // src/components/CommentModal.jsx
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Modal from './Modal';
 import axios from '../services/axios';
 
 function CommentModal({ isOpen, onClose, photoId, user }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen) {
@@ -16,7 +18,11 @@ function CommentModal({ isOpen, onClose, photoId, user }) {
   }, [isOpen, photoId]);
 
   const handleSubmit = async () => {
-    if (!user || !newComment) return;
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (!newComment.trim()) return;
     try {
       await axios.post('/comments', {
         photoId,

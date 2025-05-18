@@ -4,13 +4,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from '../services/axios';
 import { useAuth } from '../services/AuthContext';
 import { useStories } from '../services/StoriesContext';
-import CommentModal from './CommentModal';
+import Modal from './Modal';
+import Login from './Login';
 
 import { vote } from '../services/likeService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faThumbsUp as faUpReg,
-  faThumbsDown as faDownReg
+  faThumbsDown as faDownReg,
+  faComment as faCommentReg
 } from '@fortawesome/free-regular-svg-icons';
 import {
   faThumbsUp as faUpSolid,
@@ -20,85 +22,110 @@ import {
 
 function MyStory() {
   const { id } = useParams();
-  const { user } = useAuth();
-  const { updateStory, deleteStory } = useStories();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { deleteStory } = useStories();
 
   const [story, setStory] = useState(null);
+  const [content, setContent] = useState('');
+
+  // edit states
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newPubDate, setNewPubDate] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [content, setContent] = useState('');
 
-  // États like/dislike
-  const [likes, setLikes]       = useState(0);
+  // like/dislike
+  const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
-  const [liked, setLiked]       = useState(false);
+  const [liked, setLiked] = useState(false);
   const [disliked, setDisliked] = useState(false);
 
-  const [showComments, setShowComments] = useState(false);
+  // comments inline
+  const [comments, setComments] = useState([]);
   const [commentCount, setCommentCount] = useState(0);
+  const [showComments, setShowComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
-    async function fetchStory() {
+    async function fetchData() {
       try {
-        const res = await axios.get(`/stories/${id}`);
-        const data = res.data;
-        setStory(data);
-        setContent(data.content);
-        setNewTitle(data.title);
-        setNewDescription(data.description || '');
+        const { data: s } = await axios.get(`/stories/${id}`);
+        setStory(s);
+        setContent(s.content || '');
+        setNewTitle(s.title || '');
+        setNewDescription(s.description || '');
         setNewPubDate(
-          data.publicationDate
-            ? new Date(data.publicationDate).toISOString().split('T')[0]
+          s.publicationDate
+            ? new Date(s.publicationDate).toISOString().split('T')[0]
             : ''
         );
-        // initialise like/dislike
-        setLikes(data.likes || 0);
-        setDislikes(data.dislikes || 0);
-        setLiked(data.likedBy?.includes(user?.id));
-        setDisliked(data.dislikedBy?.includes(user?.id));
+        setLikes(s.likes || 0);
+        setDislikes(s.dislikes || 0);
+        setLiked(s.likedBy?.includes(user?.id));
+        setDisliked(s.dislikedBy?.includes(user?.id));
+
+        const { data: c } = await axios.get(`/comments/${id}`);
+        setComments(c);
+        setCommentCount(c.length);
       } catch (err) {
-        console.error('Erreur lors de la récupération de l\'histoire', err);
+        if (err.response?.status === 404) {
+          navigate('/');
+          return;
+        }
+        console.error(err);
       }
     }
-    fetchStory();
-  }, [id, user]);
+    fetchData();
+  }, [id, user, navigate]);
 
-  useEffect(() => {
-    axios.get(`/comments/${id}`).then(res => setCommentCount(res.data.length));
-  }, [id, showComments]);
+  const handleLike = async () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    const res = await vote('stories', id, 'like');
+    setLikes(res.likes);
+    setDislikes(res.dislikes);
+    setLiked(v => !v);
+    setDisliked(false);
+  };
 
-  const handleSaveInfo = async () => {
-    try {
-      await axios.put(`/stories/${id}`, {
-        title: newTitle,
-        publicationDate: newPubDate,
-        description: newDescription
-      });
-      const res = await axios.get(`/stories/${id}`);
-      setStory(res.data);
-      updateStory(res.data);
-      setIsEditingInfo(false);
-    } catch (err) {
-      console.error('Erreur lors de la sauvegarde des informations', err);
+  const handleDislike = async () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    const res = await vote('stories', id, 'dislike');
+    setLikes(res.likes);
+    setDislikes(res.dislikes);
+    setDisliked(v => !v);
+    setLiked(false);
+  };
+
+  const handleCommentToggle = () => {
+    if (!user) {
+      setShowLoginModal(true);
+    } else {
+      setShowComments(v => !v);
     }
   };
 
-  const handleSaveContent = async () => {
+  const handleCommentSubmit = async () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    if (!newComment.trim()) return;
     try {
-      await axios.put(`/stories/${id}`, {
-        title: story.title,
-        content
-      });
-      const res = await axios.get(`/stories/${id}`);
-      setStory(res.data);
-      updateStory(res.data);
-      setIsEditingContent(false);
+      const { data: newC } = await axios.post('/comments', { storyId: id, content: newComment });
+      setComments(prev => [...prev, newC]);
+      setCommentCount(prev => prev + 1);
+      setNewComment('');
     } catch (err) {
-      console.error('Erreur lors de la sauvegarde du contenu', err);
+      console.error(err);
     }
   };
 
@@ -108,206 +135,105 @@ function MyStory() {
       deleteStory(id);
       navigate('/');
     } catch (err) {
-      console.error('Erreur lors de la suppression de l\'histoire', err);
-    }
-  };
-
-  // Handlers Like / Dislike
-  const handleLike = async () => {
-    if (!user) {
-      alert('Connectez-vous pour liker');
-      return;
-    }
-    try {
-      const res = await vote('stories', id, 'like');
-      setLikes(res.likes);
-      setDislikes(res.dislikes);
-      setLiked(v => !v);
-      setDisliked(false);
-    } catch (err) {
-      console.error('Erreur like', err);
-    }
-  };
-
-  const handleDislike = async () => {
-    if (!user) {
-      alert('Connectez-vous pour disliker');
-      return;
-    }
-    try {
-      const res = await vote('stories', id, 'dislike');
-      setLikes(res.likes);
-      setDislikes(res.dislikes);
-      setDisliked(v => !v);
-      setLiked(false);
-    } catch (err) {
-      console.error('Erreur dislike', err);
+      console.error('Erreur suppression story:', err);
     }
   };
 
   if (!story) return <p>Chargement...</p>;
 
-  const isAuthor = user?.username === story.author?.username;
   const formatDate = d => (d ? new Date(d).toLocaleDateString() : 'Date inconnue');
+  const isAuthor = user?.username === story.author?.username;
 
   return (
-    <div style={styles.container}>
+    <div style={{ padding: '1rem', maxWidth: '800px', margin: '2rem auto' }}>
       <h2>{story.title}</h2>
-      <p>Par {story.author.username}</p>
+      <p>Par {story.author?.username || 'Inconnu'}</p>
       <p>Publiée le {formatDate(story.publicationDate)}</p>
 
-      {/* === Like / Dislike === */}
+      {/* Like / Dislike / Comments */}
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-        <button
-          onClick={handleLike}
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          <FontAwesomeIcon icon={liked ? faUpSolid : faUpReg} />{' '}
-          <span>{likes}</span>
+        <button onClick={handleLike} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={liked ? faUpSolid : faUpReg} /> {likes}
         </button>
-        <button
-          onClick={handleDislike}
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-        >
-          <FontAwesomeIcon icon={disliked ? faDownSolid : faDownReg} />{' '}
-          <span>{dislikes}</span>
+        <button onClick={handleDislike} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={disliked ? faDownSolid : faDownReg} /> {dislikes}
         </button>
-        <button onClick={() => setShowComments(true)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-          <FontAwesomeIcon icon={faCommentSolid} /> {commentCount}
+        <button onClick={handleCommentToggle} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <FontAwesomeIcon icon={showComments ? faCommentSolid : faCommentReg} /> {commentCount}
         </button>
       </div>
-      <CommentModal
-        isOpen={showComments}
-        onClose={() => setShowComments(false)}
-        photoId={story._id}
-        user={user}
-      />
 
-      {isAuthor && (
-        <div style={styles.buttonContainer}>
-          <button onClick={() => setIsEditingInfo(true)} style={styles.button}>
-            Modifier infos
-          </button>
-          <button onClick={() => setIsEditingContent(true)} style={styles.button}>
-            Écriture
-          </button>
-          <button onClick={handleDelete} style={styles.button}>
-            Supprimer
-          </button>
-        </div>
-      )}
-
-      {isEditingInfo && (
-        <div style={styles.editForm}>
-          <h3>Modifier les informations</h3>
-          <div style={styles.formField}>
-            <label>Titre</label>
-            <input
-              type="text"
-              value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
-              style={styles.input}
-            />
+      {/* Inline Comments Section */}
+      {showComments && (
+        <div style={{ marginTop: '2rem', borderTop: '1px solid #ddd', paddingTop: '1rem' }}>
+          <h3>Commentaires ({commentCount})</h3>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1rem' }}>
+            {comments.map(c => (
+              <div key={c._id} style={{ marginBottom: '0.5rem' }}>
+                <strong>{c.userId.username}</strong> : {c.content}
+              </div>
+            ))}
           </div>
-          <div style={styles.formField}>
-            <label>Date de publication</label>
-            <input
-              type="date"
-              value={newPubDate}
-              onChange={e => setNewPubDate(e.target.value)}
-              style={styles.input}
-            />
-          </div>
-          <div style={styles.formField}>
-            <label>Description</label>
-            <textarea
-              value={newDescription}
-              onChange={e => setNewDescription(e.target.value)}
-              style={styles.textarea}
-            />
-          </div>
-          <div style={styles.formButtons}>
-            <button onClick={handleSaveInfo} style={styles.button}>
-              Sauvegarder
-            </button>
-            <button
-              onClick={() => setIsEditingInfo(false)}
-              style={styles.button}
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isEditingContent && (
-        <div style={styles.editForm}>
-          <h3>Mode Écriture</h3>
           <textarea
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            style={styles.textarea}
+            value={newComment}
+            onChange={e => setNewComment(e.target.value)}
+            placeholder="Écrire un commentaire"
+            style={{ width: '100%', marginBottom: '0.5rem' }}
           />
-          <div style={styles.formButtons}>
-            <button onClick={handleSaveContent} style={styles.button}>
-              Sauvegarder
-            </button>
-            <button
-              onClick={() => setIsEditingContent(false)}
-              style={styles.button}
-            >
-              Annuler
-            </button>
-          </div>
+          <button onClick={handleCommentSubmit}>Envoyer</button>
         </div>
       )}
 
-      {!isEditingContent && (
-        <div>
-          <p>{story.content || "Aucun contenu pour l'instant."}</p>
+      {/* Login Form Modal */}
+      {showLoginModal && (
+        <Modal isOpen onClose={() => setShowLoginModal(false)}>
+          <Login onClose={() => setShowLoginModal(false)} />
+        </Modal>
+      )}
+
+      {/* Author Edit Controls */}
+      {isAuthor && (
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+          <button onClick={() => setIsEditingInfo(true)}>Modifier infos</button>
+          <button onClick={() => setIsEditingContent(true)}>Écriture</button>
+          <button onClick={handleDelete}>Supprimer</button>
         </div>
+      )}
+
+      {/* Edit Info Form */}
+      {isEditingInfo && (
+        <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem' }}>
+          <h3>Modifier informations</h3>
+          <input type="text" value={newTitle} onChange={e => setNewTitle(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
+          <input type="date" value={newPubDate} onChange={e => setNewPubDate(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
+          <textarea value={newDescription} onChange={e => setNewDescription(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
+          <button onClick={async () => {
+            await axios.put(`/stories/${id}`, { title: newTitle, publicationDate: newPubDate, description: newDescription });
+            setIsEditingInfo(false);
+          }}>Sauvegarder</button>
+          <button onClick={() => setIsEditingInfo(false)} style={{ marginLeft: '0.5rem' }}></button>
+        </div>
+      )}
+
+      {/* Edit Content Form */}
+      {isEditingContent && (
+        <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem' }}>
+          <h3>Mode écriture</h3>
+          <textarea value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', height: '200px', marginBottom: '0.5rem' }} />
+          <button onClick={async () => {
+            await axios.put(`/stories/${id}`, { title: story.title, content });
+            setIsEditingContent(false);
+          }}>Sauvegarder</button>
+          <button onClick={() => setIsEditingContent(false)} style={{ marginLeft: '0.5rem' }}></button>
+        </div>
+      )}
+
+      {/* Story Content Display */}
+      {!isEditingContent && (
+        <div style={{ marginTop: '2rem' }}><p>{content || "Aucun contenu."}</p></div>
       )}
     </div>
   );
 }
-
-const styles = {
-  container: {
-    padding: '1rem',
-    maxWidth: '800px',
-    margin: '2rem auto'
-  },
-  buttonContainer: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1rem'
-  },
-  button: {
-    padding: '0.5rem 1rem',
-    fontSize: '1rem',
-    cursor: 'pointer'
-  },
-  editForm: {
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    padding: '1rem',
-    marginBottom: '1rem'
-  },
-  formField: {
-    marginBottom: '1rem'
-  },
-  input: {
-    width: '100%',
-    padding: '0.5rem'
-  },
-  textarea: {
-    width: '100%',
-    padding: '0.5rem'
-  },
-  formButtons: {
-    display: 'flex',
-    gap: '1rem'
-  }
-};
 
 export default MyStory;

@@ -6,6 +6,8 @@ import { useAuth } from '../services/AuthContext';
 import { useStories } from '../services/StoriesContext';
 import Modal from './Modal';
 import NewRecueilForm from './NewRecueilForm';
+import Login from './Login';
+
 
 import { vote } from '../services/likeService';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -54,6 +56,8 @@ function MyNouvelle() {
   const [commentCount, setCommentCount] = useState(0);
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState('');
+
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Fetch story and comments
   useEffect(() => {
@@ -143,13 +147,20 @@ function MyNouvelle() {
     setShowNewRecueilModal(false);
   };
 
-  const handleCommentSubmit = async () => {
-    if (!user || !newComment.trim()) return;
-    const { data: newC } = await axios.post('/comments', { storyId: id, content: newComment });
-    const updated = [...comments, newC];
-    setComments(updated);
-    setCommentCount(updated.length);
-    setNewComment('');
+   const handleCommentSubmit = async () => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    if (!newComment.trim()) return;
+    try {
+      const { data: newC } = await axios.post('/comments', { storyId: id, content: newComment });
+      setComments(prev => [...prev, newC]);
+      setCommentCount(prev => prev + 1);
+      setNewComment('');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   if (!story) return <p>Chargement...</p>;
@@ -211,6 +222,13 @@ function MyNouvelle() {
         </div>
       )}
 
+      {/* Login Modal */}
+      {showLoginModal && (
+        <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
+          <Login onSuccess={() => setShowLoginModal(false)} />
+        </Modal>
+      )}
+
       {/* Edit Content Form */}
       {isEditingContent && (
         <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
@@ -223,7 +241,7 @@ function MyNouvelle() {
 
       {/* Story Content Display */}
       {!isEditingContent && <div><p>{content || "Aucun contenu."}</p></div>}
-
+      
       {/* Recueil Select */}
       {showRecueilSelect && (
         <div style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '1rem' }}>
