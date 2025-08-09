@@ -105,16 +105,16 @@ function MyNouvelle() {
   };
 
   const handleSaveInfo = async () => {
-    await axios.put(`/stories/${id}`, { title: newTitle, publicationDate: newPubDate, description: newDescription });
-    const { data } = await axios.get(`/stories/${id}`);
+    // Désormais le back renvoie la nouvelle mise à jour avec author.username peuplé
+    const { data } = await axios.put(`/stories/${id}`, { title: newTitle, publicationDate: newPubDate, description: newDescription });
     setStory(data);
     updateStory(data);
     setIsEditingInfo(false);
   };
 
   const handleSaveContent = async () => {
-    await axios.put(`/stories/${id}`, { title: story.title, content });
-    const { data } = await axios.get(`/stories/${id}`);
+    // On peut directement utiliser la réponse PUT, avec author déjà peuplé
+    const { data } = await axios.put(`/stories/${id}`, { title: story.title, content });
     setStory(data);
     updateStory(data);
     setIsEditingContent(false);
@@ -224,9 +224,10 @@ function MyNouvelle() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <Modal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)}>
-          <Login onSuccess={() => setShowLoginModal(false)} />
+        <Modal isOpen={showLoginModal} onClose={()=>setShowLoginModal(false)}>
+          <Login onSuccess={()=>setShowLoginModal(false)}/>
         </Modal>
+
       )}
 
       {/* Edit Content Form */}

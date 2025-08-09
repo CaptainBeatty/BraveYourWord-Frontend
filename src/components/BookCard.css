@@ -1,0 +1,62 @@
+/* BookCard.css */
+
+/* 1) Le conteneur s’adapte à l’image et clippe tout débordement */
+.book-card {
+  position: relative;
+  display: inline-block;    /* shrink-wrap autour de l’image */
+  margin: 16px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  overflow: hidden;         /* plus aucun texte ne s’échappe */
+  border-radius: 8px;       /* arrondis si besoin */
+}
+
+/* 2) Taille de l’icône “livre” : à ajuster si vous voulez un livre plus gros */
+.book-image {
+  display: block;
+  width: 220px;       /* par exemple 220px de large */
+  height: auto;
+  object-fit: cover;
+}
+
+/* 3) Calque de texte : plein écran, padding et centrage */
+.book-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 30px;            /* espace interne pour ne pas toucher les bords */
+  box-sizing: border-box;   /* padding inclus dans la taille totale */
+  display: flex;
+  flex-direction: column;
+  align-items: center;      /* centre horizontalement tout le texte */
+  pointer-events: none;
+  color: #222;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+
+/* Titres et métadonnées toujours centrés et sans marges parasites */
+.book-title,
+.book-author,
+.book-date {
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Éventuel petit espacement entre les blocs */
+.book-title { margin-bottom: 4px; font-size: 18px; font-weight: bold; }
+.book-author { margin-bottom: 2px; font-size: 14px; }
+.book-date   { margin-bottom: 8px; font-size: 12px; font-style: italic; }
+
+/* 4) Description en bas, clippée si trop longue */
+.book-description {
+  margin: 0;
+  margin-top: 50px;         /* pousse vers le bas */
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  max-height: 2.4em;        /* environ 2 lignes */
+  overflow: hidden;
+}

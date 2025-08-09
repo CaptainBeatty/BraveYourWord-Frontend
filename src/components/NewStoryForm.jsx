@@ -1,5 +1,6 @@
-// NewStoryForm.jsx
+// src/components/NewStoryForm.jsx
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/axios';
 
 function NewStoryForm({
@@ -10,15 +11,15 @@ function NewStoryForm({
   initialGenre = 'roman',
   initialRecueilName = ''
 }) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState(initialDescription);
   const [genre, setGenre] = useState(initialGenre);
   const [recueilName, setRecueilName] = useState(initialRecueilName);
   const [error, setError] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
-  
 
-  // Pré-remplir recueilName au titre du recueil si mode ajout à recueil existant
+  // Pré-remplir recueilName selon le contexte
   useEffect(() => {
     if (existingRecueilId) {
       setGenre('nouvelle');
@@ -33,7 +34,7 @@ function NewStoryForm({
     setIsPublishing(true);
     setError('');
     try {
-      // Cas : ajout d'une nouvelle à un recueil existant
+      // Ajout d'une nouvelle à un recueil existant
       if (existingRecueilId) {
         const response = await api.post('/stories', {
           title,
@@ -43,7 +44,7 @@ function NewStoryForm({
         });
         if (onStoryCreated) onStoryCreated(response.data);
       }
-      // Cas : création d'un roman
+      // Création d'un roman
       else if (genre === 'roman') {
         const response = await api.post('/stories', {
           title,
@@ -52,41 +53,45 @@ function NewStoryForm({
         });
         if (onStoryCreated) onStoryCreated(response.data);
       }
-      // Cas : création d'un recueil + nouvelle
+      // Création d'un recueil + nouvelle
       else if (genre === 'nouvelle') {
-        // 1) créer recueil
+        // 1) créer le recueil
         const recueilResp = await api.post('/stories', {
           title: recueilName,
-          description: description,
+          description,
           genre: 'recueil'
         });
-        const createdRecueil = recueilResp.data;
-        // 2) créer nouvelle
+        if (onStoryCreated) onStoryCreated(recueilResp.data);
+        // 2) créer la nouvelle associée
         const nouvelleResp = await api.post('/stories', {
           title,
           description,
           genre: 'nouvelle',
-          recueil: createdRecueil._id
+          recueil: recueilResp.data._id
         });
         if (onStoryCreated) onStoryCreated(nouvelleResp.data);
       }
-      // Reset
-      setTitle('');
-      setDescription('');
-      setGenre('roman');
-      setRecueilName('');
-      if (onClose) onClose();
+
+      // Après création, rediriger vers page principale
+      navigate('/');
     } catch (err) {
       console.error(err);
       const message = err.response?.data?.error || 'Erreur lors de la création.';
       setError(message);
-    } finally {
       setIsPublishing(false);
+      return;
     }
+
+    // Reset et fermeture
+    setTitle('');
+    setDescription('');
+    setGenre('roman');
+    setRecueilName('');
+    if (onClose) onClose();
   };
 
   return (
-    <div style={styles.overlay}>
+    <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <h2>Nouvelle Histoire</h2>
         {error && <p style={styles.error}>{error}</p>}
@@ -114,7 +119,6 @@ function NewStoryForm({
             />
           </div>
 
-          {/* Selection de type cachée si on ajoute à recueil existant */}
           {!existingRecueilId && (
             <div style={styles.field}>
               <label htmlFor="genre">Type d’œuvre</label>
@@ -131,7 +135,6 @@ function NewStoryForm({
             </div>
           )}
 
-          {/* Nom du recueil pour nouvelles */}
           {(!existingRecueilId && genre === 'nouvelle') && (
             <div style={styles.field}>
               <label htmlFor="recueilName">Nom du recueil</label>
@@ -170,19 +173,13 @@ function NewStoryForm({
 
 const styles = {
   overlay: {
-    position: 'fixed',
-    top: 0, left: 0,
+    position: 'fixed', top: 0, left: 0,
     width: '100%', height: '100%',
     backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex', justifyContent: 'center', alignItems: 'center',
-    zIndex: 999,
+    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 999,
   },
   modal: {
-    backgroundColor: '#fff',
-    padding: '1.5rem',
-    borderRadius: '4px',
-    minWidth: '300px',
-    position: 'relative'
+    backgroundColor: '#fff', padding: '1.5rem', borderRadius: '4px', minWidth: '300px', position: 'relative'
   },
   error: { color: 'red', marginBottom: '1rem' },
   form: { display: 'flex', flexDirection: 'column' },
