@@ -1,8 +1,22 @@
-/* .main-container {
-    background-color: #f0f0f0;
-    padding: 20px;
-    border: 1px solid #ccc;
-    flex: 1;
-    min-height: 100vh;
-  }
-   */
+
+   .main-container {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    padding-bottom: 80px;
+    align-items: center;
+   }
+
+   .cards-container {
+  /* Choix 1 (recommandé) : GRID responsive, centré */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+
+  /* Centre le bloc sur la page */
+  max-width: 1200px;
+  margin-inline: auto;
+
+  /* Centre les cartes dans leurs cellules */
+  justify-items: center;
+}
