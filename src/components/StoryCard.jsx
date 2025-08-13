@@ -20,8 +20,12 @@ const StoryCard = ({ story }) => {
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString() : 'Date inconnue');
 
   // On peut limiter la longueur de la description (facultatif) :
-  const excerpt = (txt) =>
-    txt && txt.length > 100 ? txt.slice(0, 100) + '…' : txt || '';
+  const excerpt = (txt) => {
+  if (!txt || txt.trim() === '') return ''; // aucun texte → rien
+  return txt.length > 100 
+    ? txt.slice(0, 100) + '…' 
+    : txt + '…';
+};
 
   return (
     <div className="book-card" onClick={handleClick}>

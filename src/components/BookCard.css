@@ -55,8 +55,14 @@
   margin: 0;
   margin-top: 50px;         /* pousse vers le bas */
   font-size: 12px;
+  font-style: italic;
   line-height: 1.2;
   text-align: center;
-  max-height: 2.4em;        /* environ 2 lignes */
+  max-height: 4em;        /* environ 2 lignes */
   overflow: hidden;
+  display: -webkit-box;         /* nécessaire pour le multi-lignes */
+  -webkit-line-clamp: 3;        /* nombre de lignes visibles */
+  -webkit-box-orient: vertical; /* orientation verticale */
+  text-overflow: ellipsis;      /* affiche "..." */
+  width: 85%;
 }
